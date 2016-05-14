@@ -70,20 +70,24 @@ class Robot():
         self.particles = []
         for i in range(0, self.config["num_particles"]):
 
-            x = random.randrange[0, self.width]
-            y = random.randrange[0, self.height]
-            angle = random.randrange[0, 2* math.pi]
+          
+            x = random.randrange(0, self.width)
+            y = random.randrange(0, self.height)
+            d_angle = random.randrange(0, 360)
+            angle = float(d_angle*math.pi/180.0)
             weight = (1/self.config["num_particles"])
-            pose = get_pose(x, y, angle)
+            pose = helper_functions.get_pose(x, y, angle)
 
             pose_array.poses.append(pose)
-            point = (x,y,angle,weight, pose)
+            point = (x,y,angle,weight,pose)
             self.particles.append(point)
 
         self.pose_pub.publish(pose_array)
         self.rate.sleep()
 
         self.lmap = Map(map_d) #or map_d.data
+
+        self.initial_move()
 
     def buildLMap(self):
 
@@ -94,7 +98,7 @@ class Robot():
             for c in range(len(self.width)):
 
                 (x, y) = self.lmap.cell_position(r, c);
-                if(self.data[r][c] == 100)
+                if self.data[r][c] == 100:
                     self.occupied.append([x, y])
 
                 self.all_points.append([x, y])
@@ -113,14 +117,14 @@ class Robot():
         e = math.exp(-0.5 * (n)**2 / (sd)**2)
         return const * e
 
-    def initial_move(self, WTFFF):
+    def initial_move(self):
 
         in_move = self.move_list.pop()
         move_angle = in_move[0]
         move_function(move_angle, 0)
 
         for i in self.particles:
-            particles[2]+=random.gauss(0, self.config["first_move_sigma_angle"])
+            i[2]+=random.gauss(0, self.config["first_move_sigma_angle"])
 
         #TO DO PUBLISH PARticles
 
@@ -130,15 +134,15 @@ class Robot():
 
 
 
-    def resample(self, ????):
+    def resample(self):
 
         getLaserData()
         total_weight = 0
         for p in self.particles:
-            x = p.x
-            y = p.y
+            x = p[0]
+            y = p[1]
             if map.data[x][y] == 100:
-                p.weight = 0
+                p[3] = 0
             p_total = 0
             for i in range(len(current_scan.ranges)):
                 cur_angle = p.angle + current_scan.angle_min
@@ -147,16 +151,16 @@ class Robot():
                 new_y = y + math.sin(cur_angle)
 
                 #Add from likelihood field
-                pz = self.config["laser_z_hit"] * likelihoodfield[new_x][new_y]
+                pz = self.config["laser_z_hit"] * self.lmap.get_cell(new_x,new_y)
                 pz += self.config["laser_z_rand"]
                 p_total += (pz**2)
 
-            p.weight = p.weight * p_total
+            p[3] = p[3] * p_total
 
-            total_weight += p.weight
+            total_weight += p[3]
 
         for p in self.particles:
-            p.weight /= total_weight
+            p[3] /= total_weight
 
 
 
