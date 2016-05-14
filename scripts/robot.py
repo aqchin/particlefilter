@@ -95,6 +95,7 @@ class Robot():
             self.publish_particles(self.particles)
 
             self.lmap = Map(map_d) #or map_d.data
+            self.original_map = Map(map_d)
             self.buildLMap()
             self.initial_move()
 
@@ -123,7 +124,7 @@ class Robot():
             for c in range(self.width):
 
                 (x, y) = self.lmap.cell_position(r, c);
-                if self.data[r*self.height + c] == 100:
+                if self.data[r*self.width + c] == 100:
                     self.occupied.append([x, y])
 
                 self.all_points.append([x, y])
@@ -147,7 +148,7 @@ class Robot():
         in_move = self.move_list.pop()
         move_angle = in_move[0]
         helper_functions.move_function(move_angle, 0)
-        self.resample()
+
         for i in self.particles:
             i[2]+=random.gauss(0, self.config["first_move_sigma_angle"])
            
@@ -165,10 +166,9 @@ class Robot():
                 
                 p[1]+=p[1]*math.sin(p[2])
                 p[1]+=random.gauss(0, self.config["first_move_sigma_y"])
-                print "Probbbbbbbbbbbbbbbbbb"
-                print a, " also ", b
-                print p[0], " anda ", p[1]
-                print math.fabs(p[0]+a), " AND ", math.fabs(p[1]+b)
+
+
+
             self.publish_particles(self.particles)
 
     def make_move(self):
@@ -177,38 +177,48 @@ class Robot():
     def resample(self):
 
         self.getLaserData()
-        total_weight = 0
+        total_weight = 0.0
+        count = 0
         for p in self.particles:
             x = p[0]
             y = p[1]
-            (row, col) = self.lmap._cell_index(x,y)
-
-
-            if self.lmap.get_cell(x, y) == 1:
+            p_total = 0.0
+            if self.original_map.get_cell(x, y) == 100:
                 p[3] = 0
-            p_total = 0
-            for i in range(len(self.current_scan.ranges)):
-                cur_angle = p[2] + self.current_scan.angle_min
-                cur_angle += i * self.current_scan.angle_increment
-                new_x = x * math.cos(cur_angle)
-                new_y = y + math.sin(cur_angle)
+            else:
+
+                for i in range(len(self.current_scan.ranges)):
+                    cur_angle = p[2] + self.current_scan.angle_min
+                    cur_angle += i * self.current_scan.angle_increment
+                    new_x = x * math.cos(cur_angle)
+                    new_y = y + math.sin(cur_angle)
 
                 #Add from likelihood field
-                pz = self.config["laser_z_hit"] * self.lmap.get_cell(new_x,new_y)
-                pz += self.config["laser_z_rand"]
-                p_total += (pz)
+                    if i > self.current_scan.range_min and i < self.current_scan.range_max:
+                        pz = self.config["laser_z_hit"] * self.lmap.get_cell(new_x,new_y) * 1.0
 
-            p[3] = p[3] * p_total
+                        pz += self.config["laser_z_rand"]
+                        if not math.isnan(pz):
+                            p_total += (pz)
 
+
+            if not math.isnan(p_total):
+                count += 1
+            if math.isnan(p[3]):
+                print p
+            print "PROBS"
+            print p[3]
+            p[3] = p[3] * p_total*100000.0
+            print p[3]            
             total_weight += p[3]
 
         for p in self.particles:
+
             p[3] /= total_weight
-
-
-
-
-
+        print count
+        
+        print total_weight
+        print "QQQQQQQQQQQQ"
 
 
 
